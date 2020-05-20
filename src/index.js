@@ -54,7 +54,7 @@ const start = Date.now();
 const startCrawling = async (url) => {
   console.log('startCrawling', overviewLinks.length);
   await driver.get(url);
-  // await spreadAllList();
+  await spreadAllList();
   const titleList = await (await driver).findElements(By.className('m-article-card__header__title__link'));
   console.log('done', titleList.length);
   
