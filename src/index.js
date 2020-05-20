@@ -13,7 +13,7 @@ const filename = `${new Date().toISOString().split('T')[0]}.txt`;
 
 if (process.argv) {
   console.log('process.argv', process.argv);
-  urls = process.argv[2].trim().split('url=')[1].split(',');
+  urls = process.argv[2] && process.argv[2].trim().split('url=')[1].split(',');
 }
 
 if (!urls) {
@@ -36,6 +36,8 @@ const driver = new Builder()
   .setChromeService(serviceBuilder)
   .build();
 // const url = 'https://itp.ne.jp/genre/?area=13&genre=3&subgenre=70&sort=01&sbmap=false';
+// urls = ['https://itp.ne.jp/genre/?area=13&genre=3&subgenre=70&sort=01&sbmap=false'];
+const start = Date.now();
 const getUrl = async (url) => {
   await driver.get(url);
   await spreadAllList();
@@ -46,25 +48,40 @@ const getUrl = async (url) => {
   for (let i = 0; i < titleList.length; ++i) {
     const titleElement = titleList[i];
     const href = await titleElement.getAttribute('href');
-    console.log('titleElement', href);
-    overviewLinks.push(`${href}shop`);
+    overviewLinks.push(href);
   }
-  console.log('overviewLinks', overviewLinks.length, os.cpus());
-
-  const start = Date.now();
+  // console.log('overviewLinks', overviewLinks.length, os.cpus());
+  
   for(let i = 0; i < overviewLinks.length; ++i) {
-    const link = overviewLinks[i];
+    let link = overviewLinks[i];
+    let findMail = false;
     try {
-      console.log('link', link);
+      console.log('link: ', link);
       await driver.get(link);
-      const el = await driver.findElement(By.css('.item-body.basic dl:nth-child(10) dd a'));
-      console.log('el', el);
+      // #__layout > div > article > div > div > div > main > div > dl:nth-child(7) > dd > a:nth-child(1)
+      const el = await driver.findElement(By.css('a[href*="mailto"]'));
       const text = await el.getText();
       emails.push(text);
-      console.log('text', text);
+      console.log('email: ', text);
+      findMail = true;
     } catch(e) {
       console.log('email is not exist in', link);
       // emails.push(link);
+    }
+    if (!findMail) {
+      try {
+        link += 'shop'
+        console.log('link: ', link);
+        await driver.get(link);
+        // .item-body.basic dl:nth-child(10) dd a 
+        const el = await driver.findElement(By.css('a[href*="mailto"] '));
+        const text = await el.getText();
+        emails.push(text);
+        console.log('email: ', text);
+      } catch(e) {
+        console.log('email is not exist in', link);
+        // emails.push(link);
+      }
     }
   }
   console.log('emails', emails.length);
