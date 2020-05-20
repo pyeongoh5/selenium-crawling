@@ -38,7 +38,7 @@ const driver = new Builder()
 // const url = 'https://itp.ne.jp/genre/?area=13&genre=3&subgenre=70&sort=01&sbmap=false';
 const getUrl = async (url) => {
   await driver.get(url);
-  // await spreadAllList();
+  await spreadAllList();
   const titleList = await (await driver).findElements(By.className('m-article-card__header__title__link'));
   console.log('done', titleList.length);
   const overviewLinks = [];
