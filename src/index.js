@@ -3,26 +3,42 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const webdriver = require('selenium-webdriver');
 const By = require('selenium-webdriver').By;
-const cheerio = require('cheerio');
-const request = require('request');
-const chromeCapabilities = webdriver.Capabilities.chrome();
-const chromeOptions = {
-  'args': ['--no-sandbox'],
+
+const isMacOS = process.platform === 'darwin';
+
+let urls;
+const emails = [];
+const filename = `${new Date().toISOString().split('T')[0]}.txt`;
+
+if (process.argv) {
+  console.log('process.argv', process.argv);
+  urls = process.argv[2].trim().split('url=')[1].split(',');
 }
 
-chromeCapabilities.set('chromeOptions', chromeOptions);
-chromeCapabilities.setPageLoadStrategy('eager');
+if (!urls) {
+  console.error('url paramter must be input!!');
+  console.log('paramter format:: url={url address}');
+}
 
-const driver = new webdriver.Builder()
-  .withCapabilities(chromeCapabilities)
+const { ServiceBuilder } = require('selenium-webdriver/chrome');
+const { Builder } = require('selenium-webdriver');
+
+// const chromeDriverPath = path.resolve("chromedriver_83");
+const driverName = `chromedriver_83${isMacOS ? '' : '_win.exe'}`;
+const chromeDriverPath = path.resolve(driverName);
+console.log('chromeDriverPath', chromeDriverPath);
+const serviceBuilder = new ServiceBuilder(chromeDriverPath);
+
+console.log('serviceBuilder', serviceBuilder);
+const driver = new Builder()
+  .forBrowser('chrome')
+  .setChromeService(serviceBuilder)
   .build();
-
-const url = 'https://itp.ne.jp/genre/?area=13&genre=3&subgenre=70&sort=01&sbmap=false';
+// const url = 'https://itp.ne.jp/genre/?area=13&genre=3&subgenre=70&sort=01&sbmap=false';
 const getUrl = async (url) => {
   await driver.get(url);
-  await spreadAllList();
+  // await spreadAllList();
   const titleList = await (await driver).findElements(By.className('m-article-card__header__title__link'));
   console.log('done', titleList.length);
   const overviewLinks = [];
@@ -35,7 +51,6 @@ const getUrl = async (url) => {
   }
   console.log('overviewLinks', overviewLinks.length, os.cpus());
 
-  const emails = [];
   const start = Date.now();
   for(let i = 0; i < overviewLinks.length; ++i) {
     const link = overviewLinks[i];
@@ -53,14 +68,21 @@ const getUrl = async (url) => {
     }
   }
   console.log('emails', emails.length);
-  fs.writeFile(path.join(os.homedir(), 'mail-list.txt'), emails.join('\n'), (err) => {
-    if (err) {
-      console.log('writing error', err);
-      return;
-    }
-    const end = Date.now();
-    console.log('write done!', end - start, 'ms');
-  });
+  // fs.writeFile(path.join(os.homedir(), 'mail-list.txt'), emails.join('\n'), (err) => {
+  if (urls.length > 0) {
+    const url = urls.shift();
+    await getUrl(url);
+  } else {
+    fs.writeFile(path.resolve(filename), emails.join('\r\n'), (err) => {
+      if (err) {
+        console.log('writing error', err);
+        return;
+      }
+      const end = Date.now();
+      console.log('write done!', end - start, 'ms');
+      driver.quit();
+    });
+  }
 };
 
 const spreadAllList = async () => {
@@ -80,7 +102,7 @@ const spreadAllList = async () => {
     }
   });
 }
-
+const url = urls.shift();
 getUrl(url);
 
 
