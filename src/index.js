@@ -7,7 +7,7 @@ const By = require('selenium-webdriver').By;
 const chrome = require('selenium-webdriver/chrome');
 
 const isMacOS = process.platform === 'darwin';
-const cpuCount = os.cpus().length;
+
 const chromeOptions = new chrome.Options();
 chromeOptions.addArguments('headless');
 let urls;
@@ -16,12 +16,15 @@ let doenDriverCount = 0;
 let inspectionCount = 0;
 const emails = [];
 const overviewLinks = [];
-const filename = `${new Date().toISOString().split('T')[0]}.txt`;
-
+const filename = `${new Date().toISOString().split('T')[0]}-${Date.now()}.txt`;
+let processCount;
 if (process.argv) {
   console.log('process.argv', process.argv);
   urls = process.argv[2] && process.argv[2].trim().split('url=')[1].split(',');
+  processCount = process.argv[3] && process.argv[3].trim().split('=')[1];
 }
+const cpuCount = processCount ? processCount : os.cpus().length * 2;
+console.log('cpuCount', cpuCount);
 
 if (!urls) {
   console.error('url paramter must be input!!');
@@ -51,7 +54,7 @@ const start = Date.now();
 const startCrawling = async (url) => {
   console.log('startCrawling', overviewLinks.length);
   await driver.get(url);
-  await spreadAllList();
+  // await spreadAllList();
   const titleList = await (await driver).findElements(By.className('m-article-card__header__title__link'));
   console.log('done', titleList.length);
   
@@ -102,7 +105,7 @@ const parsingEmail = async(_driver) => {
       // const text = await el.getText();
       console.log('el', el);
       const text = await el.getAttribute('href');
-      emails.push(text);
+      emails.push(text.split('mailto:')[1]);
       console.log('email: ', text);
       findMail = true;
     } catch(e) {
@@ -117,7 +120,7 @@ const parsingEmail = async(_driver) => {
         const el = await _driver.findElement(By.css('a[href*="mailto"]'));
         console.log('el', el);
         const text = await el.getAttribute('href');
-        emails.push(text);
+        emails.push(text.split('mailto:')[1]);
         console.log('email: ', text);
       } catch(e) {
         console.log('email is not exist in', link);
