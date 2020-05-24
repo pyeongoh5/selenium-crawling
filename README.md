@@ -1,2 +1,2 @@
 # selenium-crawling
-crawling project with selenium
+This is working on specific urls. It was built through `PKG` library
