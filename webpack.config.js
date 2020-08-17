@@ -1,6 +1,6 @@
 const path = require('path');
 module.exports = {
-  entry: ['./src/index.js'],
+  entry: './src/index',
   target: 'node',
   mode: 'development',
   output: {
@@ -15,15 +15,18 @@ module.exports = {
     /* Advanced output configuration (click to show) */
     /* Expert output configuration (on own risk) */
   },
+  resolve: {
+    extensions: ['.js', '.ts'],
+  },
   module: {
     rules: [
       {
-        test: /\.js$/,
+        test: /\.ts$/,
         exclude: /node_modules/,
         use: {
-          loader: "babel-loader"
-        },
-      }
+          loader: "ts-loader",
+        }
+      },
     ]
   }
 }
