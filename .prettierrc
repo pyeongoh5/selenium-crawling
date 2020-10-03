@@ -3,9 +3,9 @@
   "tabWidth": 2,
   "singleQuote": true,
   "trailingComma": "all",
-  "bracketSpacing": true, // [1,2] -> [ 1, 2 ]
+  "bracketSpacing": true,
   "semi": true,
   "useTabs": true,
-  "arrowParens": "avoid", // (x) => x를 x => x로 변환
+  "arrowParens": "avoid",
   "endOfLine": "lf"
 }

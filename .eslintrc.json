@@ -1,28 +1,28 @@
 {
-  "env": {
-    "browser": true,
-    "es2020": true
-  },
-  "extends": [
-    "eslint:recommended",
-    "plugin:react/recommended",
-    "plugin:@typescript-eslint/recommended"
-  ],
-  "parser": "@typescript-eslint/parser",
-  "parserOptions": {
-    "ecmaVersion": 11,
-    "sourceType": "module"
-  },
-  "plugins": [
-    "react",
-    "@typescript-eslint"
-  ],
-  "rules": {
-    "no-unused-vars": 1,
-    "@typescript-eslint/no-var-requires": 0,
-    "@typescript-eslint/indent": [
-      "error",
-      2
-    ]
-  }
+	"env": {
+		"browser": true,
+		"es2020": true
+	},
+	"extends": [
+		"eslint:recommended",
+		"plugin:react/recommended",
+		"plugin:prettier/recommended",
+		"plugin:@typescript-eslint/recommended"
+	],
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"ecmaVersion": 11,
+		"sourceType": "module"
+	},
+	"plugins": ["react", "@typescript-eslint", "prettier"],
+	"rules": {
+		"no-unused-vars": 1,
+		"@typescript-eslint/no-var-requires": 0,
+		"indent": ["error", "tab"],
+		"@typescript-eslint/indent": ["error", "tab"],
+		"no-constant-condition": 0,
+		"no-async-promise-executor": 0,
+		"no-undef": 0
+		// "space-in-brackets": ["error", "always"]
+	}
 }
