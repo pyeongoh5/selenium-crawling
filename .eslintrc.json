@@ -18,7 +18,8 @@
 	"rules": {
 		"no-unused-vars": 1,
 		"@typescript-eslint/no-var-requires": 0,
-		"indent": ["error", "tab"],
+		// "indent": ["error", "tab"],
+		"indent": ["error", "tab", { "SwitchCase": 1 }],
 		"@typescript-eslint/indent": ["error", "tab"],
 		"no-constant-condition": 0,
 		"no-async-promise-executor": 0,

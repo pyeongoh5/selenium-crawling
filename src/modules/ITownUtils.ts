@@ -1,8 +1,9 @@
 import * as XLSX from 'xlsx';
-import { CrawlerPage } from 'src/internals';
+import { CrawlerPage, pad } from 'src/internals';
 
+const os = require('os');
 const path = require('path');
-const { readFile } = XLSX;
+const { readFile, utils, writeFile } = XLSX;
 const excelPath = path.resolve('resources/sample.xlsx');
 // const excelPath = '../resources/test.xlsx';
 
@@ -18,16 +19,28 @@ enum ITOWN_OUTPUT_ITEMS {
 	HOME_PAGE = 'ホームページ',
 	E_MAIL = 'E-mailアドレス',
 	EXPORT_DATA = '데이터 추출일시',
+	LINK = 'url',
 }
 
-type OutputRecords = { [key in ITOWN_OUTPUT_ITEMS]: string };
+export enum CELL_CODE {
+	AREA_CODE = 'B',
+	AREA_NAME = 'C',
+	GENRE_CODE = 'G',
+	GENRE_NAME = 'E',
+	SUBGENRE_CODE = 'H',
+	SUBGENRE_NAME = 'F',
+}
+
+export type CELL_CODE_NAME = CELL_CODE.AREA_NAME | CELL_CODE.GENRE_NAME | CELL_CODE.SUBGENRE_NAME;
+
+export type OutputRecords = { [key in ITOWN_OUTPUT_ITEMS]: string };
 
 interface CellLocation {
 	row: string;
 	col: string;
 }
 
-interface CrawlingParam {
+export interface CrawlingParam {
 	area: string;
 	genre: string;
 	subGenre: string;
@@ -35,17 +48,27 @@ interface CrawlingParam {
 
 type CrawlingParams = CrawlingParam[];
 
-enum CELL_CODE {
-	AREA_CODE = 'B',
-	GENRE_CODE = 'G',
-	SUBGENRE_CODE = 'H',
+interface ITownCode {
+	[key: string]: string;
+}
+
+interface ITownCodeMap {
+	area: ITownCode;
+	genre: ITownCode;
+	subGenre: ITownCode;
 }
 
 export class ITownUtils {
 	cellRange: CellLocation[];
 	sheet: XLSX.WorkSheet;
+	iTownCodeMap: ITownCodeMap;
 	constructor() {
 		this.cellRange = [];
+		this.iTownCodeMap = {
+			area: {},
+			genre: {},
+			subGenre: {},
+		};
 	}
 
 	/**
@@ -77,6 +100,8 @@ export class ITownUtils {
 				col,
 			});
 		});
+
+		this.generateCodeMap();
 	}
 
 	/**
@@ -131,5 +156,74 @@ export class ITownUtils {
 			record[ITOWN_OUTPUT_ITEMS[key]] = undefined;
 		});
 		return record as OutputRecords;
+	}
+
+	/**
+	 * 코드 번호와 이름을 매칭시킬수 있는 맵 변수 생성
+	 * ex)
+	 * area[1]: 훗카이도
+	 * genre[1]: 병원
+	 * subGenre[1]: 치과
+	 */
+	private generateCodeMap(): void {
+		const maxRows: number = +this.cellRange[1].row;
+		console.log('maxRows', maxRows);
+		for (let i = 2; i <= maxRows; i++) {
+			if (this.sheet[`${CELL_CODE.AREA_CODE}${i}`]) {
+				const areaCode = this.sheet[`${CELL_CODE.AREA_CODE}${i}`].v;
+				const areaName = this.sheet[`${CELL_CODE.AREA_NAME}${i}`].v;
+				this.iTownCodeMap.area[+areaCode] = areaName;
+			}
+			const genreCode = this.sheet[`${CELL_CODE.GENRE_CODE}${i}`].v;
+			const genreName = this.sheet[`${CELL_CODE.GENRE_NAME}${i}`].v;
+			const subGenreCode = this.sheet[`${CELL_CODE.SUBGENRE_CODE}${i}`].v;
+			const subGenreName = this.sheet[`${CELL_CODE.SUBGENRE_NAME}${i}`].v;
+			this.iTownCodeMap.genre[genreCode] = genreName;
+			this.iTownCodeMap.subGenre[subGenreCode] = subGenreName;
+		}
+	}
+
+	getCodeName(codeName: CELL_CODE_NAME, row: number): string {
+		switch (codeName) {
+			case CELL_CODE.AREA_NAME:
+				return this.iTownCodeMap.area[row];
+			case CELL_CODE.GENRE_NAME:
+				return this.iTownCodeMap.genre[row];
+			case CELL_CODE.SUBGENRE_NAME:
+				return this.iTownCodeMap.subGenre[row];
+		}
+	}
+
+	processingEmptyValue(data: OutputRecords): OutputRecords {
+		Object.keys(data).forEach((key: string) => {
+			// ITown 에서는 없는 값을 '－' 문자로 표시함
+			if (data[key] === undefined || data[key] === '－') {
+				data[key] = 'NA';
+			}
+			return data[key];
+		});
+
+		return data;
+	}
+
+	saveToExcel(data: OutputRecords[]) {
+		const wb = utils.book_new();
+		const excelJsonData = [];
+		excelJsonData.push(Object.keys(ITOWN_OUTPUT_ITEMS).map(key => ITOWN_OUTPUT_ITEMS[key]));
+
+		data.forEach(record => {
+			console.log('record', record);
+			const d = Object.keys(record).map(key => {
+				return record[key];
+			});
+			excelJsonData.push(d);
+		});
+
+		console.log('excelJsonData', excelJsonData);
+		const sheet = utils.aoa_to_sheet(excelJsonData);
+		console.log('sheet', sheet);
+		utils.book_append_sheet(wb, sheet, 'output');
+		console.log('path', path.resolve('Desktop'));
+		writeFile(wb, '/Users/pyeong.oh/Desktop/Output.xlsx');
 	}
 }
