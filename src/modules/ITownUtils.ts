@@ -1,10 +1,11 @@
 import * as XLSX from 'xlsx';
 import { CrawlerPage, pad } from 'src/internals';
+import fs from 'fs';
+import { emailRegex, minimumRow, urlRegex, zipCodeRegex, zipNumberCodeRegex } from 'src/constants';
 
 const os = require('os');
 const path = require('path');
 const { readFile, utils, writeFile } = XLSX;
-const excelPath = path.resolve('resources/sample.xlsx');
 // const excelPath = '../resources/test.xlsx';
 
 enum ITOWN_OUTPUT_ITEMS {
@@ -59,9 +60,16 @@ interface ITownCodeMap {
 }
 
 export class ITownUtils {
+	// NOTE: Maybe Common Util Variables
+	driverPath: string;
+	delay: number;
+	resourcePath: string;
+
+	rootSavePath: string;
 	cellRange: CellLocation[];
 	sheet: XLSX.WorkSheet;
 	iTownCodeMap: ITownCodeMap;
+
 	constructor() {
 		this.cellRange = [];
 		this.iTownCodeMap = {
@@ -69,13 +77,49 @@ export class ITownUtils {
 			genre: {},
 			subGenre: {},
 		};
+		this.rootSavePath = `${os.homedir()}/Desktop/CrawlingResult`;
+	}
+
+	/**
+	 * maybe common uitl function
+	 * @param driverPath
+	 */
+	setDriverPath(driverPath: string): void {
+		this.driverPath = driverPath;
+	}
+
+	/**
+	 * maybe common uitl function
+	 */
+	getDriverPath(): string {
+		return this.driverPath;
+	}
+
+	/**
+	 * maybe common uitl function
+	 * @param delay
+	 */
+	setDelay(delay: number): void {
+		this.delay = delay;
+	}
+
+	/**
+	 * maybe common uitl function
+	 */
+	getDelay(): number {
+		return this.delay;
+	}
+
+	setResourcePath(resourcePath: string): void {
+		this.resourcePath = resourcePath;
 	}
 
 	/**
 	 * Excel File에서, style sheet와 해당 sheet의 정보 범위를 추출한다.
 	 */
-	parserInputExcel() {
-		const wb: XLSX.WorkBook = readFile(excelPath);
+	parserInputExcel(): void {
+		console.log('parserInputExcel', this.resourcePath);
+		const wb: XLSX.WorkBook = readFile(this.resourcePath);
 		const sheetName = wb.SheetNames[0];
 		this.sheet = wb.Sheets[sheetName];
 
@@ -119,12 +163,12 @@ export class ITownUtils {
 		const cellRanges = _cellRange.split('~');
 
 		const params = [];
-		const areaStart = +areaRanges[0] || 2;
+		const areaStart = +areaRanges[0] || minimumRow;
 		const areaEnd = +areaRanges[1] || (areaRanges.length > 1 ? 48 : areaStart);
-		const cellStart = +cellRanges[0] || 1;
+		const cellStart = +cellRanges[0] || minimumRow;
 		const cellEnd = +cellRanges[1] || (cellRanges.length > 1 ? this.cellRange[1].row : cellStart);
 
-		console.log('areaRanges', areaEnd, cellEnd, this.cellRange);
+		console.log('areaRanges', areaStart, areaEnd, cellStart, cellEnd, this.cellRange);
 		for (let i = areaStart; i <= areaEnd; ++i) {
 			const areaCode = this.sheet[CELL_CODE.AREA_CODE + i].v;
 
@@ -194,11 +238,38 @@ export class ITownUtils {
 		}
 	}
 
+	manufacturingData(shopData: OutputRecords): OutputRecords {
+		// 주소
+		if (shopData['住所'] && shopData['住所'].match(zipCodeRegex)) {
+			const zipCodeMatches = shopData['住所'].match(zipCodeRegex);
+			shopData['住所'] = shopData['住所'].replace(zipCodeRegex, '');
+			shopData['住所'] = shopData['住所'].replace('地図', ''); // '지도' 라는 문구 삭제
+			shopData['우편번호'] = zipCodeMatches[0].match(zipNumberCodeRegex)[0];
+		}
+
+		// url
+		if (shopData['ホームページ'] && shopData['ホームページ'].match(urlRegex)) {
+			const urlMatches = shopData['ホームページ'].match(urlRegex);
+			shopData['ホームページ'] = urlMatches[0];
+		} else {
+			shopData['ホームページ'] = undefined;
+		}
+
+		// email
+		if (shopData['E-mailアドレス'] && shopData['E-mailアドレス'].match(emailRegex)) {
+			shopData['E-mailアドレス'] = shopData['E-mailアドレス'].match(emailRegex)[0];
+		}
+		// if (shopData['電話番号'] && shopData['電話番号'].match(phoneNumberRegex)) {
+		// 	shopData['電話番号'] = shopData['電話番号'].match(phoneNumberRegex)[0];
+		// }
+		return shopData;
+	}
+
 	processingEmptyValue(data: OutputRecords): OutputRecords {
 		Object.keys(data).forEach((key: string) => {
 			// ITown 에서는 없는 값을 '－' 문자로 표시함
 			if (data[key] === undefined || data[key] === '－') {
-				data[key] = 'NA';
+				data[key] = 'n.a.';
 			}
 			return data[key];
 		});
@@ -206,7 +277,29 @@ export class ITownUtils {
 		return data;
 	}
 
-	saveToExcel(data: OutputRecords[]) {
+	makeSaveDirectory(param: CrawlingParam): string {
+		if (!fs.existsSync(this.rootSavePath)) {
+			fs.mkdirSync(this.rootSavePath);
+		}
+		const areaPath = `${this.rootSavePath}/${this.getCodeName(CELL_CODE.AREA_NAME, +param.area)}`;
+		if (!fs.existsSync(areaPath)) {
+			fs.mkdirSync(areaPath);
+		}
+		const genrePath = `${areaPath}/${this.getCodeName(CELL_CODE.GENRE_NAME, +param.genre)}`;
+		if (!fs.existsSync(genrePath)) {
+			fs.mkdirSync(genrePath);
+		}
+		const subGenrePath = `${genrePath}/${this.getCodeName(
+			CELL_CODE.SUBGENRE_NAME,
+			+param.subGenre,
+		)}`;
+		// if (!fs.existsSync(subGenrePath)) {
+		// 	fs.mkdirSync(subGenrePath);
+		// }
+		return subGenrePath;
+	}
+
+	saveToExcel(data: OutputRecords[], savePath: string) {
 		const wb = utils.book_new();
 		const excelJsonData = [];
 		excelJsonData.push(Object.keys(ITOWN_OUTPUT_ITEMS).map(key => ITOWN_OUTPUT_ITEMS[key]));
@@ -224,6 +317,6 @@ export class ITownUtils {
 		console.log('sheet', sheet);
 		utils.book_append_sheet(wb, sheet, 'output');
 		console.log('path', path.resolve('Desktop'));
-		writeFile(wb, '/Users/pyeong.oh/Desktop/Output.xlsx');
+		writeFile(wb, `${savePath}.csv`);
 	}
 }

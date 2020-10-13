@@ -1,23 +1,42 @@
 import { CrawlerType } from 'src/enums';
-const os = require('os');
+const path = require('path');
 
-console.log('CommandParser');
 interface CommandMeta {
 	type: string;
 	area: string;
 	row: string;
+	driverPath?: string;
+	delay?: number;
+	resourcePath?: string;
 }
 
 export class CommandParser {
-	parse(): CommandMeta {
-		const type = process.argv[2] ? process.argv[2].trim().split('=')[1] : CrawlerType.I_TOWN_PAGE;
-		const area = process.argv[3] ? process.argv[3].trim().split('=')[1] : '2~';
-		const row = process.argv[4] ? process.argv[4].trim().split('=')[1] : '2~';
+	arguments: CommandMeta;
 
-		return {
-			type,
-			area,
-			row,
+	constructor() {
+		this.arguments = {
+			type: CrawlerType.I_TOWN_PAGE,
+			area: '2~',
+			row: '2~',
+			driverPath: path.resolve('chromedriver_85'),
+			delay: 2,
+			resourcePath: path.resolve('resources/sample.xlsx'),
 		};
+	}
+
+	parse(): CommandMeta {
+		for (let i = 2; i < process.argv.length; ++i) {
+			const arg = process.argv[i];
+
+			if (arg) {
+				console.log('arg', arg);
+				const [key, value] = arg.split('=');
+				if (Object.prototype.hasOwnProperty.call(this.arguments, key)) {
+					this.arguments[key] = value;
+				}
+			}
+		}
+
+		return this.arguments;
 	}
 }

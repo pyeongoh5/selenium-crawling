@@ -1,5 +1,6 @@
 import { Driver } from 'src/modules/Driver';
 import { isMacOS } from 'src/constants/constants';
+import { ITownUtils } from '../ITownUtils';
 
 console.log('Driver', Driver);
 
@@ -11,6 +12,7 @@ const chromeDriverPath = path.resolve(driverName);
 export abstract class Crawler {
 	drivers: Driver[];
 	driverNumber: number;
+	utils: ITownUtils;
 
 	constructor() {
 		this.drivers = [];
@@ -26,12 +28,28 @@ export abstract class Crawler {
 		}
 	}
 
-	public createDriver(): any {
-		return new Driver(chromeDriverPath).getDriver();
+	public createDriver(driverPath: string = chromeDriverPath): any {
+		return new Driver(driverPath).getDriver();
 	}
 
 	public setDriverCount(count: number): void {
 		this.driverNumber = count;
+	}
+
+	setDriverPath(driverPath: string): void {
+		this.utils.setDriverPath(driverPath);
+	}
+
+	setDelay(delay: number): void {
+		this.utils.setDelay(delay);
+	}
+
+	setResourcePath(resourcePath: string): void {
+		this.utils.setResourcePath(resourcePath);
+	}
+
+	parserInputExcel(): void {
+		this.utils.parserInputExcel();
 	}
 
 	abstract run(): Promise<void>;

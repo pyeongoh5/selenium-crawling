@@ -29,19 +29,19 @@ const http = require('http');
 // }).listen(8080);
 
 export class Driver {
-  driver;
-  constructor(chromeDriverPath: string) {
-    console.log('chromeDriverPath', chromeDriverPath);
-    const serviceBuilder = new ServiceBuilder(chromeDriverPath);
-    this.driver = new Builder()
-      .forBrowser('chrome')
-      // .setChromeOptions(new chrome.Options().addArguments(["user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"]))
-      .setChromeService(serviceBuilder)
-      // .usingServer('http://127.0.0.1:8080')
-      // .setProxy(proxy.manual({http: 'http://127.0.0.1:8080'}))
-      .build(); 
-  }
-  public getDriver() {
-    return this.driver;
-  }
+	driver;
+	constructor(chromeDriverPath: string) {
+		console.log('chromeDriverPath', chromeDriverPath);
+		const serviceBuilder = new ServiceBuilder(chromeDriverPath);
+		this.driver = new Builder()
+			.forBrowser('chrome')
+			// .setChromeOptions(new chrome.Options().addArguments(["user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"]))
+			.setChromeService(serviceBuilder)
+			// .usingServer('http://127.0.0.1:8080')
+			// .setProxy(proxy.manual({http: 'http://127.0.0.1:8080'}))
+			.build();
+	}
+	public getDriver() {
+		return this.driver;
+	}
 }
