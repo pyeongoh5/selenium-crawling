@@ -6,7 +6,7 @@
   "scripts": {
     "start": "yarn build && node ./dist/bundle.js",
     "build": "webpack",
-    "pkg-build": "yarn build && pkg ."
+    "build-pkg": "yarn build && pkg ."
   },
   "bin": {
     "app": "./dist/bundle.js"
