@@ -14,7 +14,7 @@
   "repository": "https://github.com/pyeongoh5/selenium-crawling",
   "author": "",
   "license": "ISC",
-  "chromeVersion": "85",
+  "chromeVersion": "87",
   "devDependencies": {
     "@babel/core": "^7.9.6",
     "@babel/preset-env": "^7.9.6",

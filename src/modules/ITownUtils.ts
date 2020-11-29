@@ -8,8 +8,9 @@ const path = require('path');
 const { readFile, utils, writeFile } = XLSX;
 // const excelPath = '../resources/test.xlsx';
 
-enum ITOWN_OUTPUT_ITEMS {
-	AREA = '지역',
+export enum ITOWN_OUTPUT_ITEMS {
+	TODOBUHYUN = '都道府県',
+	AREA = '市',
 	GENRE = '대분류',
 	SUBGENRE = '소분류',
 	COMPANY_NAME = '掲載名',
@@ -23,16 +24,26 @@ enum ITOWN_OUTPUT_ITEMS {
 	LINK = 'url',
 }
 
-export enum CELL_CODE {
-	AREA_CODE = 'B',
-	AREA_NAME = 'C',
-	GENRE_CODE = 'G',
-	GENRE_NAME = 'E',
-	SUBGENRE_CODE = 'H',
-	SUBGENRE_NAME = 'F',
+enum ITOWN_OUTPUT_ITEMS2 {
+	ADDRESS = '住所',
+	PHONE_NUMBER = 'TEL',
 }
 
-export type CELL_CODE_NAME = CELL_CODE.AREA_NAME | CELL_CODE.GENRE_NAME | CELL_CODE.SUBGENRE_NAME;
+export enum CELL_CODE {
+	TODO_NAME = 'C', // 토도부현
+	AREA_CODE = 'D',
+	AREA_NAME = 'E',
+	GENRE_CODE = 'I',
+	GENRE_NAME = 'G',
+	SUBGENRE_CODE = 'J',
+	SUBGENRE_NAME = 'H',
+}
+
+export type CELL_CODE_NAME =
+	| CELL_CODE.AREA_NAME
+	| CELL_CODE.GENRE_NAME
+	| CELL_CODE.SUBGENRE_NAME
+	| CELL_CODE.TODO_NAME;
 
 export type OutputRecords = { [key in ITOWN_OUTPUT_ITEMS]: string };
 
@@ -54,6 +65,7 @@ interface ITownCode {
 }
 
 interface ITownCodeMap {
+	todobuhyun: ITownCode;
 	area: ITownCode;
 	genre: ITownCode;
 	subGenre: ITownCode;
@@ -73,6 +85,7 @@ export class ITownUtils {
 	constructor() {
 		this.cellRange = [];
 		this.iTownCodeMap = {
+			todobuhyun: {},
 			area: {},
 			genre: {},
 			subGenre: {},
@@ -168,7 +181,6 @@ export class ITownUtils {
 		const cellStart = +cellRanges[0] || minimumRow;
 		const cellEnd = +cellRanges[1] || (cellRanges.length > 1 ? this.cellRange[1].row : cellStart);
 
-		console.log('areaRanges', areaStart, areaEnd, cellStart, cellEnd, this.cellRange);
 		for (let i = areaStart; i <= areaEnd; ++i) {
 			const areaCode = this.sheet[CELL_CODE.AREA_CODE + i].v;
 
@@ -183,7 +195,6 @@ export class ITownUtils {
 				});
 			}
 		}
-		console.log('params', params, params.length);
 
 		return params;
 	}
@@ -211,19 +222,22 @@ export class ITownUtils {
 	 */
 	private generateCodeMap(): void {
 		const maxRows: number = +this.cellRange[1].row;
-		console.log('maxRows', maxRows);
 		for (let i = 2; i <= maxRows; i++) {
 			if (this.sheet[`${CELL_CODE.AREA_CODE}${i}`]) {
 				const areaCode = this.sheet[`${CELL_CODE.AREA_CODE}${i}`].v;
 				const areaName = this.sheet[`${CELL_CODE.AREA_NAME}${i}`].v;
+				const todobuhyunName = this.sheet[`${CELL_CODE.TODO_NAME}${i}`].v;
 				this.iTownCodeMap.area[+areaCode] = areaName;
+				this.iTownCodeMap.todobuhyun[+areaCode] = todobuhyunName;
 			}
-			const genreCode = this.sheet[`${CELL_CODE.GENRE_CODE}${i}`].v;
-			const genreName = this.sheet[`${CELL_CODE.GENRE_NAME}${i}`].v;
-			const subGenreCode = this.sheet[`${CELL_CODE.SUBGENRE_CODE}${i}`].v;
-			const subGenreName = this.sheet[`${CELL_CODE.SUBGENRE_NAME}${i}`].v;
-			this.iTownCodeMap.genre[genreCode] = genreName;
-			this.iTownCodeMap.subGenre[subGenreCode] = subGenreName;
+			if (this.sheet[`${CELL_CODE.GENRE_CODE}${i}`]) {
+				const genreCode = this.sheet[`${CELL_CODE.GENRE_CODE}${i}`].v;
+				const genreName = this.sheet[`${CELL_CODE.GENRE_NAME}${i}`].v;
+				const subGenreCode = this.sheet[`${CELL_CODE.SUBGENRE_CODE}${i}`].v;
+				const subGenreName = this.sheet[`${CELL_CODE.SUBGENRE_NAME}${i}`].v;
+				this.iTownCodeMap.genre[genreCode] = genreName;
+				this.iTownCodeMap.subGenre[subGenreCode] = subGenreName;
+			}
 		}
 	}
 
@@ -235,6 +249,8 @@ export class ITownUtils {
 				return this.iTownCodeMap.genre[row];
 			case CELL_CODE.SUBGENRE_NAME:
 				return this.iTownCodeMap.subGenre[row];
+			case CELL_CODE.TODO_NAME:
+				return this.iTownCodeMap.todobuhyun[row];
 		}
 	}
 
@@ -293,30 +309,32 @@ export class ITownUtils {
 			CELL_CODE.SUBGENRE_NAME,
 			+param.subGenre,
 		)}`;
-		// if (!fs.existsSync(subGenrePath)) {
-		// 	fs.mkdirSync(subGenrePath);
-		// }
 		return subGenrePath;
 	}
 
-	saveToExcel(data: OutputRecords[], savePath: string) {
+	saveToExcel(data: OutputRecords[], savePath: string): boolean {
 		const wb = utils.book_new();
 		const excelJsonData = [];
 		excelJsonData.push(Object.keys(ITOWN_OUTPUT_ITEMS).map(key => ITOWN_OUTPUT_ITEMS[key]));
 
 		data.forEach(record => {
-			console.log('record', record);
 			const d = Object.keys(record).map(key => {
 				return record[key];
 			});
 			excelJsonData.push(d);
 		});
 
-		console.log('excelJsonData', excelJsonData);
-		const sheet = utils.aoa_to_sheet(excelJsonData);
-		console.log('sheet', sheet);
-		utils.book_append_sheet(wb, sheet, 'output');
-		console.log('path', path.resolve('Desktop'));
-		writeFile(wb, `${savePath}.csv`);
+		try {
+			// console.log('excelJsonData', excelJsonData);
+			const sheet = utils.aoa_to_sheet(excelJsonData);
+			// console.log('sheet', sheet);
+			utils.book_append_sheet(wb, sheet, 'output');
+			console.log('path', savePath);
+			writeFile(wb, `${savePath}.csv`);
+			return true;
+		} catch (e) {
+			console.error('error occured when save To Excel::', e.message);
+			return false;
+		}
 	}
 }

@@ -1,5 +1,9 @@
 import { CrawlerType } from 'src/enums';
+import { isMacOS } from 'src/constants/constants';
+
 const path = require('path');
+const chromeVersion = require('../../package.json').chromeVersion;
+const driverName = `chromedriver_${chromeVersion}${isMacOS ? '' : '_win.exe'}`;
 
 interface CommandMeta {
 	type: string;
@@ -18,9 +22,9 @@ export class CommandParser {
 			type: CrawlerType.I_TOWN_PAGE,
 			area: '2~',
 			row: '2~',
-			driverPath: path.resolve('chromedriver_85'),
+			driverPath: path.resolve(driverName),
 			delay: 2,
-			resourcePath: path.resolve('resources/sample.xlsx'),
+			resourcePath: path.resolve('resources/new_sample.xlsx'),
 		};
 	}
 

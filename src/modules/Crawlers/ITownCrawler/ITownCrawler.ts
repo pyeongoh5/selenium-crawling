@@ -1,14 +1,14 @@
 import { Crawler } from 'src/modules/Crawlers/Crawler';
 import { Driver } from 'src/modules/Driver';
 import { CrawlingOption, CrawlerPage, removeDuplicateStringArray } from 'src/internals';
-import { ITownUtils, CELL_CODE, OutputRecords, CrawlingParam } from 'src/modules/ITownUtils';
 import {
-	urlRegex,
-	zipCodeRegex,
-	zipNumberCodeRegex,
-	phoneNumberRegex,
-	emailRegex,
-} from 'src/constants';
+	ITownUtils,
+	ITOWN_OUTPUT_ITEMS,
+	CELL_CODE,
+	OutputRecords,
+	CrawlingParam,
+} from 'src/modules/ITownUtils';
+import { zipCodeRegex, zipNumberCodeRegex } from 'src/constants';
 
 const sample = require('../../../../resources/sampleResult.json');
 // import { removeDuplicateStringArray } from 'src/utils/utils';
@@ -53,10 +53,16 @@ export class ITownCrawler extends Crawler {
 			const url = this.utils.getITownPageUrl(param);
 			try {
 				await driver.get(url);
-				// const noResult = await driver.findElement(By.className('o-resule-none-text'));
-				// if (noResult) {
-				// 	continue;
-				// }
+
+				try {
+					const noResult = await driver.findElement(By.className('o-resule-none-text'));
+					if (noResult) {
+						continue;
+					}
+				} catch (e) {
+					// result exist
+				}
+
 				await this.spreadAllList(driver);
 				const titleList = await (await driver).findElements(
 					By.className('m-article-card__header__title__link'),
@@ -67,7 +73,7 @@ export class ITownCrawler extends Crawler {
 					this.detailPages.push(href);
 				}
 				this.detailPages = removeDuplicateStringArray(this.detailPages);
-				const shopData = await this.parsingData(driver, param);
+				const shopData = await this.parsingShopData(driver, param);
 				console.log('shopData', shopData);
 
 				const savePath = this.utils.makeSaveDirectory(param);
@@ -82,14 +88,14 @@ export class ITownCrawler extends Crawler {
 		driver.quit();
 	}
 
-	async parsingData(driver: any, param: CrawlingParam): Promise<OutputRecords[]> {
+	async parsingShopData(driver: any, param: CrawlingParam): Promise<OutputRecords[]> {
 		if (this.detailPages.length <= 0) {
 			console.error('nothing to parsing');
 			return;
 		}
 
 		const shopDatas = [];
-		let startTime = Date.now();
+		const startTime = Date.now();
 		// 조회할 수 있는 페이지 만큼 반복
 		while (this.detailPages.length > 0) {
 			const endTime = Date.now();
@@ -100,29 +106,98 @@ export class ITownCrawler extends Crawler {
 			}
 
 			console.log('move to next link', passedTime);
-			const link = this.detailPages.shift() + 'shop';
+			const originLink = this.detailPages.shift();
+			// const originLink = 'https://itp.ne.jp/info/050530901136440410/';
+			const link = originLink + 'shop';
+			let wrapper;
+			let shopData;
+			let isShopExist = false;
 			try {
 				await driver.get(link);
-				console.log('link', link);
-				const wrapper = await driver.findElement(By.css('.item-body.basic'));
+				// NOTE: .item-bdoy.basic 엘리멘트를 찾으면, shop page가 있는것으로 가정함
+				wrapper = await driver.findElement(By.css('.item-body.basic'));
+				isShopExist = true;
+			} catch (e) {
+				// shop page is not exist
+				console.log('shop page is not exist', originLink, e.message);
+			}
+
+			if (isShopExist) {
 				const els = await wrapper.findElements(By.css('dl'));
-				let shopData = await this.getShopData(driver, els);
+				shopData = await this.getShopData(driver, els);
 				shopData = this.utils.manufacturingData(shopData);
-				// CURRENT: shopPage에서 추출한 데이터에 추가적으로 해당 페이지의 url을 추가한다.
-				// TODO: 이미 할당된 변수에 지속적으로 프로퍼티에 대한 값이 추가되고 있어서, 다른 좋은 방법을 구상해보자
-				shopData.url = link;
-				shopData['지역'] = this.utils.getCodeName(CELL_CODE.AREA_NAME, +param.area);
-				shopData['대분류'] = this.utils.getCodeName(CELL_CODE.GENRE_NAME, +param.genre);
-				shopData['소분류'] = this.utils.getCodeName(CELL_CODE.SUBGENRE_NAME, +param.subGenre);
-				shopData['데이터 추출일시'] = new Date(Date.now()).toISOString().split('T')[0];
+			} else {
+				shopData = await this.parsingNoneShopData(driver, originLink);
+				shopData = this.utils.manufacturingData(shopData);
+				// shopDatas.push(shopData);
+				// startTime = Date.now(); // reset tick
+				// continue;
+			}
+
+			if (shopData) {
+				shopData.url = isShopExist ? link : originLink;
+				shopData[ITOWN_OUTPUT_ITEMS.TODOBUHYUN] = this.utils.getCodeName(
+					CELL_CODE.TODO_NAME,
+					+param.area,
+				);
+				shopData[ITOWN_OUTPUT_ITEMS.AREA] = this.utils.getCodeName(
+					CELL_CODE.AREA_NAME,
+					+param.area,
+				);
+				shopData[ITOWN_OUTPUT_ITEMS.GENRE] = this.utils.getCodeName(
+					CELL_CODE.GENRE_NAME,
+					+param.genre,
+				);
+				shopData[ITOWN_OUTPUT_ITEMS.SUBGENRE] = this.utils.getCodeName(
+					CELL_CODE.SUBGENRE_NAME,
+					+param.subGenre,
+				);
+				shopData[ITOWN_OUTPUT_ITEMS.EXPORT_DATA] = new Date(Date.now()).toISOString().split('T')[0];
 				shopData = this.utils.processingEmptyValue(shopData);
 				shopDatas.push(shopData);
-			} catch (e) {
-				startTime = Date.now();
-				console.error('error occured in parsingData', e);
 			}
+
+			// console.log('https://itp.ne.jp/info/050530901136440410/', shopData);
+			// break;
 		}
 		return shopDatas;
+	}
+
+	async parsingNoneShopData(driver: any, link: string): Promise<Partial<OutputRecords>> {
+		try {
+			await driver.get(link);
+			const data = this.utils.generateNewRecord();
+			const companyName = await driver.findElement(By.css('h2.o-detail-header__title'));
+			data[ITOWN_OUTPUT_ITEMS.COMPANY_NAME] = await companyName.getText();
+			const els = await driver.findElements(By.css('.o-article-data'));
+			for (let i = 0; i < els.length; ++i) {
+				const el = els[i];
+				const title = await el.findElement(By.css('.o-article-data__title'));
+				const value = await el.findElement(By.css('.o-article-data__data'));
+				const titleText = await title.getText();
+				const valueText = await value.getText();
+				console.log('titleText', titleText);
+				if (titleText === ITOWN_OUTPUT_ITEMS.ADDRESS) {
+					const zipCode = valueText.match(zipCodeRegex)[0];
+					data[ITOWN_OUTPUT_ITEMS.ADDRESS] = valueText.replace(zipCodeRegex, '');
+					data[ITOWN_OUTPUT_ITEMS.ZIP_CODE] = zipCode.match(zipNumberCodeRegex)[0];
+				} else if (titleText === 'TEL') {
+					// F専  팩스만 , F兼 팩스 전화번호 동일
+					const phoneNumber = valueText.replace('(F専)', '');
+					if (valueText.includes('専')) {
+						data[ITOWN_OUTPUT_ITEMS.FAX_NUMBER] = phoneNumber;
+						continue;
+					}
+					data[ITOWN_OUTPUT_ITEMS.PHONE_NUMBER] = phoneNumber;
+				} else if (titleText === ITOWN_OUTPUT_ITEMS.HOME_PAGE) {
+					data[ITOWN_OUTPUT_ITEMS.HOME_PAGE] = valueText;
+				}
+			}
+			console.log('data', data);
+			return data;
+		} catch (e) {
+			console.log('error on parsingNoneShopData::', e);
+		}
 	}
 
 	async getShopData(driver, els): Promise<OutputRecords> {
