@@ -81,6 +81,7 @@ export class ITownCrawler extends Crawler {
 				this.utils.saveToExcel(shopData, savePath);
 			} catch (e) {
 				console.error('error occured in run', e);
+				throw e;
 			}
 
 			// cellData.push(shopData);
@@ -122,19 +123,23 @@ export class ITownCrawler extends Crawler {
 				console.log('shop page is not exist', originLink, e.message);
 			}
 
-			if (isShopExist) {
-				const els = await wrapper.findElements(By.css('dl'));
-				shopData = await this.getShopData(driver, els);
-				shopData = this.utils.manufacturingData(shopData);
-			} else {
-				shopData = await this.parsingNoneShopData(driver, originLink);
-				shopData = this.utils.manufacturingData(shopData);
-				// shopDatas.push(shopData);
-				// startTime = Date.now(); // reset tick
-				// continue;
+			try {
+				if (isShopExist) {
+					const els = await wrapper.findElements(By.css('dl'));
+					shopData = await this.getShopData(driver, els);
+				} else {
+					shopData = await this.parsingNoneShopData(driver, originLink);
+					// shopDatas.push(shopData);
+					// startTime = Date.now(); // reset tick
+					// continue;
+				}
+			} catch(e) {
+				console.log('error occured when make shopData', e, shopData);
+				throw e;
 			}
 
 			if (shopData) {
+				shopData = this.utils.manufacturingData(shopData);
 				shopData.url = isShopExist ? link : originLink;
 				shopData[ITOWN_OUTPUT_ITEMS.TODOBUHYUN] = this.utils.getCodeName(
 					CELL_CODE.TODO_NAME,

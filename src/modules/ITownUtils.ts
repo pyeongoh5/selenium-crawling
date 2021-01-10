@@ -24,11 +24,6 @@ export enum ITOWN_OUTPUT_ITEMS {
 	LINK = 'url',
 }
 
-enum ITOWN_OUTPUT_ITEMS2 {
-	ADDRESS = '住所',
-	PHONE_NUMBER = 'TEL',
-}
-
 export enum CELL_CODE {
 	TODO_NAME = 'C', // 토도부현
 	AREA_CODE = 'D',
@@ -256,10 +251,10 @@ export class ITownUtils {
 
 	manufacturingData(shopData: OutputRecords): OutputRecords {
 		// 주소
-		if (shopData['住所'] && shopData['住所'].match(zipCodeRegex)) {
-			const zipCodeMatches = shopData['住所'].match(zipCodeRegex);
-			shopData['住所'] = shopData['住所'].replace(zipCodeRegex, '');
-			shopData['住所'] = shopData['住所'].replace('地図', ''); // '지도' 라는 문구 삭제
+		if (shopData && shopData[ITOWN_OUTPUT_ITEMS.ADDRESS] && shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].match(zipCodeRegex)) {
+			const zipCodeMatches = shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].match(zipCodeRegex);
+			shopData[ITOWN_OUTPUT_ITEMS.ADDRESS] = shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].replace(zipCodeRegex, '');
+			shopData[ITOWN_OUTPUT_ITEMS.ADDRESS] = shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].replace('地図', ''); // '지도' 라는 문구 삭제
 			shopData['우편번호'] = zipCodeMatches[0].match(zipNumberCodeRegex)[0];
 		}
 
