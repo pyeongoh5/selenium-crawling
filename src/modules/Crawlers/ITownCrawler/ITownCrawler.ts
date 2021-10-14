@@ -133,7 +133,7 @@ export class ITownCrawler extends Crawler {
 					// startTime = Date.now(); // reset tick
 					// continue;
 				}
-			} catch(e) {
+			} catch (e) {
 				console.log('error occured when make shopData', e, shopData);
 				throw e;
 			}
@@ -196,6 +196,8 @@ export class ITownCrawler extends Crawler {
 					data[ITOWN_OUTPUT_ITEMS.PHONE_NUMBER] = phoneNumber;
 				} else if (titleText === ITOWN_OUTPUT_ITEMS.HOME_PAGE) {
 					data[ITOWN_OUTPUT_ITEMS.HOME_PAGE] = valueText;
+				} else if (titleText === 'E-mail' || titleText === ITOWN_OUTPUT_ITEMS.E_MAIL) {
+					data[ITOWN_OUTPUT_ITEMS.E_MAIL] = valueText;
 				}
 			}
 			console.log('data', data);
