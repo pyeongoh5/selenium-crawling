@@ -108,7 +108,7 @@ export class ITownCrawler extends Crawler {
 
 			console.log('move to next link', passedTime);
 			const originLink = this.detailPages.shift();
-			// const originLink = 'https://itp.ne.jp/info/050530901136440410/';
+			// const originLink = 'https://itp.ne.jp/info/510000000000017534/';
 			const link = originLink + 'shop';
 			let wrapper;
 			let shopData;
@@ -121,6 +121,9 @@ export class ITownCrawler extends Crawler {
 			} catch (e) {
 				// shop page is not exist
 				console.log('shop page is not exist', originLink, e.message);
+				if (e.message.includes('window was already closed')) {
+					process.exit();
+				}
 			}
 
 			try {
@@ -211,26 +214,31 @@ export class ITownCrawler extends Crawler {
 		const shopData = this.utils.generateNewRecord();
 		for (let i = 0; i < els.length; ++i) {
 			const el = els[i];
-			const name = await el.findElement(By.css('dt'));
-			const nameText = await name.getText();
-			let data = await el.findElement(By.css('dd'));
-			let dataText = '';
-			// 전화 번호
-			if (nameText === '電話番号') {
-				data = await data.findElements(By.css('.tell'));
-				console.log('data', data);
-				const dataTexts = [];
-				for (let i = 0; i < data.length; ++i) {
-					dataTexts.push(await data[i].getText());
+			try {
+				const name = await el.findElement(By.css('dt'));
+				const nameText = await name.getText();
+				let data = await el.findElement(By.css('dd'));
+				let dataText = '';
+				// 전화 번호
+				if (nameText === '電話番号') {
+					data = await data.findElements(By.css('.tell'));
+					console.log('data', data);
+					const dataTexts = [];
+					for (let i = 0; i < data.length; ++i) {
+						dataTexts.push(await data[i].getText());
+					}
+
+					dataText = dataTexts.join(', ');
+				} else {
+					dataText = await data.getText();
 				}
 
-				dataText = dataTexts.join(', ');
-			} else {
-				dataText = await data.getText();
-			}
-
-			if (Object.prototype.hasOwnProperty.call(shopData, nameText)) {
-				shopData[nameText] = dataText;
+				if (Object.prototype.hasOwnProperty.call(shopData, nameText)) {
+					shopData[nameText] = dataText;
+				}
+			} catch (e) {
+				console.log('e', el);
+				continue;
 			}
 		}
 		console.log('getShopData', shopData);

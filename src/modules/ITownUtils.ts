@@ -177,11 +177,22 @@ export class ITownUtils {
 		const cellEnd = +cellRanges[1] || (cellRanges.length > 1 ? this.cellRange[1].row : cellStart);
 
 		for (let i = areaStart; i <= areaEnd; ++i) {
-			const areaCode = this.sheet[CELL_CODE.AREA_CODE + i].v;
+			// console.log('AREA_CODE', this.sheet[CELL_CODE.AREA_CODE + i]);
+			const areaCell = this.sheet[CELL_CODE.AREA_CODE + i];
+			if (!areaCell) {
+				break;
+			}
+
+			const areaCode = areaCell.v;
 
 			for (let j = cellStart; j <= cellEnd; ++j) {
-				const genreCode = this.sheet[CELL_CODE.GENRE_CODE + j].v;
-				const subGenreCode = this.sheet[CELL_CODE.SUBGENRE_CODE + j].v;
+				const genreCell = this.sheet[CELL_CODE.GENRE_CODE + j];
+				const subGenreCell = this.sheet[CELL_CODE.SUBGENRE_CODE + j];
+				if (!genreCell || !subGenreCell) {
+					break;
+				}
+				const genreCode = genreCell.v;
+				const subGenreCode = subGenreCell.v;
 
 				params.push({
 					area: areaCode,
@@ -251,10 +262,20 @@ export class ITownUtils {
 
 	manufacturingData(shopData: OutputRecords): OutputRecords {
 		// 주소
-		if (shopData && shopData[ITOWN_OUTPUT_ITEMS.ADDRESS] && shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].match(zipCodeRegex)) {
+		if (
+			shopData &&
+			shopData[ITOWN_OUTPUT_ITEMS.ADDRESS] &&
+			shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].match(zipCodeRegex)
+		) {
 			const zipCodeMatches = shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].match(zipCodeRegex);
-			shopData[ITOWN_OUTPUT_ITEMS.ADDRESS] = shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].replace(zipCodeRegex, '');
-			shopData[ITOWN_OUTPUT_ITEMS.ADDRESS] = shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].replace('地図', ''); // '지도' 라는 문구 삭제
+			shopData[ITOWN_OUTPUT_ITEMS.ADDRESS] = shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].replace(
+				zipCodeRegex,
+				'',
+			);
+			shopData[ITOWN_OUTPUT_ITEMS.ADDRESS] = shopData[ITOWN_OUTPUT_ITEMS.ADDRESS].replace(
+				'地図',
+				'',
+			); // '지도' 라는 문구 삭제
 			shopData['우편번호'] = zipCodeMatches[0].match(zipNumberCodeRegex)[0];
 		}
 
