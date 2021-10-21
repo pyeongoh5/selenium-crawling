@@ -61,6 +61,7 @@ export class ITownCrawler extends Crawler {
 					}
 				} catch (e) {
 					// result exist
+					continue;
 				}
 
 				await this.spreadAllList(driver);
@@ -81,7 +82,8 @@ export class ITownCrawler extends Crawler {
 				this.utils.saveToExcel(shopData, savePath);
 			} catch (e) {
 				console.error('error occured in run', e);
-				throw e;
+				// throw e;
+				continue;
 			}
 
 			// cellData.push(shopData);
@@ -138,7 +140,7 @@ export class ITownCrawler extends Crawler {
 				}
 			} catch (e) {
 				console.log('error occured when make shopData', e, shopData);
-				throw e;
+				// throw e;
 			}
 
 			if (shopData) {
